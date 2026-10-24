@@ -1,11 +1,6 @@
 import { AlertTriangle, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
-interface Props {
-  count: number;
-  caseId?: string;
-}
-
 export function OverlapAlertBanner({ count }: { count: number }) {
   if (count === 0) return null;
   return (
@@ -20,7 +15,10 @@ export function OverlapAlertBanner({ count }: { count: number }) {
           bureaus. Human review and coordination is required. No case will be automatically closed.
         </p>
       </div>
-      <Link to="/overlaps" className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-900">
+      <Link
+        to="/overlaps"
+        className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-900"
+      >
         View <ChevronRight className="w-3 h-3" />
       </Link>
     </div>

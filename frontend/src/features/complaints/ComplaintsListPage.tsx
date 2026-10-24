@@ -7,7 +7,7 @@ import { Pagination } from "../../components/Pagination";
 import { PageLoader } from "../../components/LoadingSpinner";
 import { CaseOverlapBadge } from "../../components/OverlapAlert";
 import { formatDate } from "../../utils";
-import { Search, Plus, Download, AlertTriangle, Filter } from "lucide-react";
+import { Search, Plus, Download } from "lucide-react";
 import { exportCSV } from "../../api/reports";
 
 const STATUSES = ["new", "under_process", "transferred", "pending_info", "disposed", "closed"];

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Building2, LayoutDashboard, FileText, Landmark, AlertTriangle,
-  BarChart3, Users, LogOut, Menu, X, ChevronDown, Bell, Shield,
+  BarChart3, Users, LogOut, Menu, X, Bell, Shield,
 } from "lucide-react";
 import { useAuth } from "../features/auth/AuthContext";
 import { getRoleLabel } from "../utils";

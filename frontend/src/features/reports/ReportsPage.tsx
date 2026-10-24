@@ -6,7 +6,7 @@ import {
 } from "../../api/reports";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  ResponsiveContainer, LineChart, Line, Legend,
+  ResponsiveContainer, LineChart, Line,
 } from "recharts";
 import { PageLoader } from "../../components/LoadingSpinner";
 import { Download } from "lucide-react";

@@ -39,10 +39,10 @@ def institution_summary(
             Institution.aicte_permanent_id,
             Institution.region,
             func.count(Complaint.id).label("total"),
-            func.sum(func.cast(Complaint.status == ComplaintStatus.disposed, db.bind.dialect.name == "postgresql" and "integer" or "integer")).label("disposed"),
         )
         .join(Complaint, Complaint.institution_id == Institution.id, isouter=True)
         .group_by(Institution.id, Institution.name, Institution.aicte_permanent_id, Institution.region)
+        .order_by(func.count(Complaint.id).desc())
     )
     rows = q.all()
     return [
@@ -125,11 +125,16 @@ def disposal_rate(
     results = []
     today = date.today()
     for i in range(5, -1, -1):
-        first = (today.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
-        if first.month == 12:
-            last = first.replace(year=first.year + 1, month=1, day=1) - timedelta(days=1)
+        year = today.year
+        month = today.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        first = date(year, month, 1)
+        if month == 12:
+            last = date(year + 1, 1, 1) - timedelta(days=1)
         else:
-            last = first.replace(month=first.month + 1, day=1) - timedelta(days=1)
+            last = date(year, month + 1, 1) - timedelta(days=1)
 
         q = base_query(db, current_user)
         received = q.filter(Complaint.received_date >= first, Complaint.received_date <= last).count()

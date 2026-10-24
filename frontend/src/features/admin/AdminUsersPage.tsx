@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listUsers, createUser, updateUser, deactivateUser } from "../../api/admin";
+import { listUsers, createUser, deactivateUser } from "../../api/admin";
 import { PageLoader } from "../../components/LoadingSpinner";
 import { getRoleLabel, formatDate } from "../../utils";
 import { Plus, UserX } from "lucide-react";

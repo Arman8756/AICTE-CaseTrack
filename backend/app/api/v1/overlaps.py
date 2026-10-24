@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import Optional
 
@@ -56,7 +56,6 @@ def list_overlaps(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    from sqlalchemy.orm import joinedload
     q = db.query(CaseOverlap).options(
         joinedload(CaseOverlap.complaint_a).joinedload(Complaint.institution),
         joinedload(CaseOverlap.complaint_b).joinedload(Complaint.institution),
@@ -65,17 +64,21 @@ def list_overlaps(
     if active_only:
         q = q.filter(CaseOverlap.is_active == True)
 
-    # Bureau scoping for officers
+    # Bureau scoping — join Complaint only once, combine filters
+    bureau_filter = bureau
+    role_bureau = None
     if current_user.role in (UserRole.rb_officer, UserRole.pgrc_officer):
-        b = current_user.bureau.value
-        q = q.join(
-            Complaint, or_(CaseOverlap.case_id_a == Complaint.id, CaseOverlap.case_id_b == Complaint.id)
-        ).filter(Complaint.assigned_bureau == b)
+        role_bureau = current_user.bureau.value
 
-    if bureau:
+    if role_bureau or bureau_filter:
         q = q.join(
-            Complaint, or_(CaseOverlap.case_id_a == Complaint.id, CaseOverlap.case_id_b == Complaint.id)
-        ).filter(Complaint.assigned_bureau == bureau)
+            Complaint,
+            or_(CaseOverlap.case_id_a == Complaint.id, CaseOverlap.case_id_b == Complaint.id),
+        )
+        if role_bureau:
+            q = q.filter(Complaint.assigned_bureau == role_bureau)
+        elif bureau_filter:
+            q = q.filter(Complaint.assigned_bureau == bureau_filter)
 
     total = q.count()
     unacknowledged = db.query(CaseOverlap).filter(
@@ -83,7 +86,12 @@ def list_overlaps(
         CaseOverlap.acknowledged_at == None,
     ).count()
 
-    items = q.order_by(CaseOverlap.detected_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    items = (
+        q.order_by(CaseOverlap.detected_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     return OverlapListResponse(
         items=[to_response(ov) for ov in items],
         total=total,
@@ -109,7 +117,6 @@ def acknowledge_overlap(
     overlap.acknowledged_at = datetime.now(timezone.utc)
     overlap.resolution_note = data.resolution_note
 
-    # Log on both complaints
     for cid in [overlap.case_id_a, overlap.case_id_b]:
         action = ComplaintAction(
             id=uuid.uuid4(),

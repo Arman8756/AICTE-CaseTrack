@@ -11,8 +11,8 @@ import { PageLoader } from "../../components/LoadingSpinner";
 import { OverlapAlertBanner } from "../../components/OverlapAlert";
 import { Link } from "react-router-dom";
 import {
-  FileText, Clock, CheckCircle, AlertTriangle, ArrowUpRight,
-  RefreshCw, TrendingUp, Users,
+  FileText, Clock, CheckCircle, AlertTriangle,
+  RefreshCw, ArrowUpRight,
 } from "lucide-react";
 import { getActionTypeLabel, formatDateTime } from "../../utils";
 

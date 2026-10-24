@@ -1,11 +1,10 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 import re
 
 
 def normalize_name(name: str) -> str:
-    """Lowercase and strip punctuation/extra spaces."""
     normalized = re.sub(r"[^a-z0-9\s]", "", name.lower())
     return re.sub(r"\s+", " ", normalized).strip()
 
@@ -41,6 +40,8 @@ class InstitutionUpdate(BaseModel):
 
 
 class InstitutionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     aicte_permanent_id: Optional[str] = None
     name: str
@@ -56,9 +57,6 @@ class InstitutionResponse(BaseModel):
     is_active: bool
     created_at: datetime
     complaint_count: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 
 class InstitutionListResponse(BaseModel):

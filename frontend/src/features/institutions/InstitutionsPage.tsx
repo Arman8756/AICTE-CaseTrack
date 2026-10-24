@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { listInstitutions } from "../../api/institutions";
 import { Pagination } from "../../components/Pagination";
 import { PageLoader } from "../../components/LoadingSpinner";
-import { Search, Landmark } from "lucide-react";
+import { Search } from "lucide-react";
 
 const REGIONS = ["North","South","East","West","Central","North-East","North-West","South-East"];
 

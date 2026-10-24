@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getComplaint, getComplaintActions, addAction,
-  transferComplaint, escalateComplaint, updateComplaint,
+  transferComplaint, escalateComplaint,
 } from "../../api/complaints";
 import { StatusBadge } from "../../components/StatusBadge";
 import { PageLoader } from "../../components/LoadingSpinner";
@@ -16,7 +16,7 @@ import { useAuth } from "../auth/AuthContext";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Clock, AlertTriangle, MessageSquare, ArrowRightLeft,
-  TrendingUp, CheckCircle,
+  CheckCircle,
 } from "lucide-react";
 
 const ACTION_ICON: Record<string, React.ReactNode> = {
@@ -235,7 +235,7 @@ export default function ComplaintDetailPage() {
           <div className="relative">
             <div className="absolute left-3.5 top-0 bottom-0 w-px bg-gray-200" aria-hidden="true" />
             <div className="space-y-4">
-              {actions.map((action, i) => (
+              {actions.map((action) => (
                 <div key={action.id} className="relative flex gap-3 pl-1">
                   <div className="relative z-10 flex-shrink-0 w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                     {ACTION_ICON[action.action_type] ?? <Clock className="w-3 h-3 text-gray-400" />}

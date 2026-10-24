@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from app.models.user import UserRole, Bureau
+from pydantic import ConfigDict
 
 
 class LoginRequest(BaseModel):
@@ -23,6 +24,8 @@ class RefreshRequest(BaseModel):
 
 
 class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     username: str
     email: str
@@ -31,6 +34,3 @@ class UserProfileResponse(BaseModel):
     bureau: Bureau
     region: Optional[str] = None
     is_active: bool
-
-    class Config:
-        from_attributes = True

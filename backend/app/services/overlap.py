@@ -3,22 +3,19 @@ Cross-Bureau Overlap Detection Service.
 
 Rules:
   1. Exact institution ID match → definite overlap (score 1.0)
-  2. Normalized name similarity via pg_trgm → probable (score = trgm similarity)
-  3. Keyword/token Jaccard on descriptions → informational (score = jaccard)
+  2. Keyword/token Jaccard on descriptions → supplementary score
 
 The system NEVER auto-closes or auto-decides cases. It only surfaces alerts.
 """
 import uuid
 import re
 from datetime import datetime, timezone
-from typing import List, Tuple
+from typing import List
 from sqlalchemy.orm import Session
-from sqlalchemy import text, and_, or_
+from sqlalchemy import or_
 
 from app.models.complaint import Complaint, ComplaintStatus
 from app.models.case_overlap import CaseOverlap, MatchMethod
-from app.core.config import settings
-
 
 OPEN_STATUSES = [
     ComplaintStatus.new,
@@ -46,16 +43,30 @@ def _jaccard(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
+def _active_overlap_count(db: Session, complaint_id) -> int:
+    return (
+        db.query(CaseOverlap)
+        .filter(
+            or_(
+                CaseOverlap.case_id_a == complaint_id,
+                CaseOverlap.case_id_b == complaint_id,
+            ),
+            CaseOverlap.is_active == True,
+        )
+        .count()
+    )
+
+
 def detect_overlaps_for_complaint(
     db: Session, complaint: Complaint
 ) -> List[CaseOverlap]:
     """
-    Run overlap detection for a single complaint.
+    Run overlap detection for a single complaint against all other open
+    complaints at the same institution.
     Returns newly created CaseOverlap records.
     """
     new_overlaps: List[CaseOverlap] = []
 
-    # Find open complaints for same institution (excluding itself)
     candidates = (
         db.query(Complaint)
         .filter(
@@ -67,10 +78,9 @@ def detect_overlaps_for_complaint(
     )
 
     for candidate in candidates:
-        # Ensure deterministic pair ordering (smaller UUID first)
+        # Deterministic pair ordering (smaller UUID string first)
         a_id, b_id = sorted([complaint.id, candidate.id], key=str)
 
-        # Check if overlap already recorded
         existing = (
             db.query(CaseOverlap)
             .filter(
@@ -86,18 +96,19 @@ def detect_overlaps_for_complaint(
                 db.flush()
             continue
 
-        # Determine match method and score
-        method = MatchMethod.aicte_id_exact
-        score = 1.0
-
-        # Add keyword similarity as secondary score
+        # Use keyword Jaccard as secondary signal; primary match is same institution
         kw_score = _jaccard(complaint.description, candidate.description)
+        match_method = MatchMethod.aicte_id_exact
+        score = 1.0
+        if kw_score > 0:
+            match_method = MatchMethod.keyword_similarity
+            score = max(1.0, kw_score)   # institution-exact always takes precedence
 
         overlap = CaseOverlap(
             id=uuid.uuid4(),
             case_id_a=a_id,
             case_id_b=b_id,
-            match_method=method,
+            match_method=match_method,
             similarity_score=score,
             detected_at=datetime.now(timezone.utc),
             is_active=True,
@@ -107,39 +118,21 @@ def detect_overlaps_for_complaint(
 
     db.flush()
 
-    # Update overlap flags on the complaint
-    active_overlaps = (
-        db.query(CaseOverlap)
-        .filter(
-            or_(
-                CaseOverlap.case_id_a == complaint.id,
-                CaseOverlap.case_id_b == complaint.id,
-            ),
-            CaseOverlap.is_active == True,
-        )
-        .count()
-    )
-    complaint.overlap_count = active_overlaps
-    complaint.has_overlap = active_overlaps > 0
+    # Recompute overlap counts for main complaint
+    complaint.overlap_count = _active_overlap_count(db, complaint.id)
+    complaint.has_overlap = complaint.overlap_count > 0
 
-    # Also update the partner complaints
+    # Recompute for each partner (accurate, no double-counting)
     for overlap in new_overlaps:
-        partner_id = overlap.case_id_b if str(overlap.case_id_a) == str(complaint.id) else overlap.case_id_a
+        partner_id = (
+            overlap.case_id_b
+            if str(overlap.case_id_a) == str(complaint.id)
+            else overlap.case_id_a
+        )
         partner = db.query(Complaint).filter(Complaint.id == partner_id).first()
         if partner:
-            partner_overlaps = (
-                db.query(CaseOverlap)
-                .filter(
-                    or_(
-                        CaseOverlap.case_id_a == partner.id,
-                        CaseOverlap.case_id_b == partner.id,
-                    ),
-                    CaseOverlap.is_active == True,
-                )
-                .count()
-            )
-            partner.overlap_count = partner_overlaps + len(new_overlaps)
-            partner.has_overlap = True
+            partner.overlap_count = _active_overlap_count(db, partner.id)
+            partner.has_overlap = partner.overlap_count > 0
 
     db.flush()
     return new_overlaps
@@ -155,8 +148,8 @@ def run_full_overlap_detection(db: Session) -> int:
         .filter(Complaint.status.in_(OPEN_STATUSES))
         .all()
     )
+    seen_pairs: set = set()
     total_new = 0
-    processed_pairs = set()
 
     for complaint in open_complaints:
         overlaps = detect_overlaps_for_complaint(db, complaint)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole, Bureau
@@ -29,6 +29,8 @@ class PasswordChange(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     username: str
     email: str
@@ -39,9 +41,6 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class UserListResponse(BaseModel):
