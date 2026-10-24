@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 from app.models.complaint import ComplaintStatus, ComplaintPriority, ReceivedChannel
@@ -35,27 +35,27 @@ class ComplaintUpdate(BaseModel):
 
 
 class InstitutionBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     aicte_permanent_id: Optional[str] = None
     region: Optional[str] = None
     state: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class OfficerBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     full_name: str
     username: str
     bureau: str
 
-    class Config:
-        from_attributes = True
-
 
 class ComplaintResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     case_id: str
     institution: InstitutionBrief
@@ -79,9 +79,6 @@ class ComplaintResponse(BaseModel):
     has_overlap: bool
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class ComplaintListResponse(BaseModel):

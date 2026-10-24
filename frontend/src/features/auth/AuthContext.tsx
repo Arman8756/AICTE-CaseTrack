@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import type { AuthUser } from "../../types";
-import { login as apiLogin, logout as apiLogout } from "../../api/auth";
+import { login as apiLogin } from "../../api/auth";
 import type { LoginPayload } from "../../api/auth";
 
 interface AuthContextValue {
@@ -10,7 +10,7 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    apiLogout().catch(() => {});
     sessionStorage.clear();
     setUser(null);
   }, []);

@@ -27,7 +27,7 @@ export default function LoginPage() {
       await login(data);
       navigate("/dashboard");
     } catch {
-      toast.error("Invalid username or password");
+      toast.error("Login failed. Please try again.");
     }
   };
 
@@ -93,12 +93,13 @@ export default function LoginPage() {
 
           {/* Demo credentials hint */}
           <div className="mt-6 p-3 bg-blue-50 rounded-md border border-blue-100">
-            <p className="text-xs font-semibold text-blue-700 mb-1">Demo Credentials</p>
+            <p className="text-xs font-semibold text-blue-700 mb-1">🚀 Demo Mode — Any credentials work!</p>
             <div className="text-xs text-blue-600 space-y-0.5">
-              <div>Admin: <code className="font-mono">admin / Admin@123</code></div>
-              <div>RB Officer: <code className="font-mono">rb_officer1 / RBOfficer@123</code></div>
-              <div>PGRC Officer: <code className="font-mono">pgrc_officer1 / PGRCOfficer@123</code></div>
-              <div>Senior Mgmt: <code className="font-mono">senior_mgmt / Director@123</code></div>
+              <div>Try specific roles with these usernames (any password):</div>
+              <div>Admin: <code className="font-mono">admin</code></div>
+              <div>RB Officer: <code className="font-mono">rb_officer1</code></div>
+              <div>PGRC Officer: <code className="font-mono">pgrc_officer1</code></div>
+              <div>Senior Mgmt: <code className="font-mono">senior_mgmt</code></div>
             </div>
           </div>
         </div>

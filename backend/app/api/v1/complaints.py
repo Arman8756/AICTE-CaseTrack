@@ -3,7 +3,7 @@ from datetime import datetime, date, timezone
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, and_
+from sqlalchemy import or_
 
 from app.db.session import get_db
 from app.core.deps import get_current_active_user
@@ -22,17 +22,16 @@ from app.services.overlap import detect_overlaps_for_complaint
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
 
 
-def apply_role_filter(q, current_user: User):
+def apply_role_filter(q, current_user: User, already_joined_institution: bool = False):
     """Apply bureau/region scoping based on user role."""
-    if current_user.role == UserRole.admin:
-        return q
-    if current_user.role == UserRole.senior_management:
+    if current_user.role in (UserRole.admin, UserRole.senior_management):
         return q
     if current_user.role in (UserRole.rb_officer, UserRole.pgrc_officer):
         return q.filter(Complaint.assigned_bureau == current_user.bureau.value)
     if current_user.role == UserRole.regional_officer:
-        # Regional officers see complaints for institutions in their region
-        return q.join(Institution).filter(Institution.region == current_user.region)
+        if not already_joined_institution:
+            q = q.join(Institution, Complaint.institution_id == Institution.id)
+        return q.filter(Institution.region == current_user.region)
     return q
 
 
@@ -96,26 +95,40 @@ def list_complaints(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
+    # Determine if we need to join Institution for filters
+    needs_inst_join = bool(search or region) or current_user.role == UserRole.regional_officer
+
     q = db.query(Complaint).options(
         joinedload(Complaint.institution),
         joinedload(Complaint.assigned_officer),
     )
-    q = apply_role_filter(q, current_user)
+
+    # Join Institution once if needed
+    if needs_inst_join:
+        q = q.join(Institution, Complaint.institution_id == Institution.id)
+
+    # Role-based scoping (pass already_joined=True to avoid double join)
+    if current_user.role in (UserRole.admin, UserRole.senior_management):
+        pass
+    elif current_user.role in (UserRole.rb_officer, UserRole.pgrc_officer):
+        q = q.filter(Complaint.assigned_bureau == current_user.bureau.value)
+    elif current_user.role == UserRole.regional_officer:
+        q = q.filter(Institution.region == current_user.region)
 
     if search:
-        q = q.join(Institution).filter(
+        q = q.filter(
             or_(
                 Complaint.case_id.ilike(f"%{search}%"),
                 Institution.name.ilike(f"%{search}%"),
                 Institution.aicte_permanent_id.ilike(f"%{search}%"),
             )
         )
+    if region:
+        q = q.filter(Institution.region == region)
     if status:
         q = q.filter(Complaint.status == status)
     if bureau:
         q = q.filter(Complaint.assigned_bureau == bureau)
-    if region:
-        q = q.join(Institution, isouter=True).filter(Institution.region == region)
     if category:
         q = q.filter(Complaint.category == category)
     if priority:
@@ -211,12 +224,10 @@ def get_complaint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    q = db.query(Complaint).options(
+    complaint = db.query(Complaint).options(
         joinedload(Complaint.institution),
         joinedload(Complaint.assigned_officer),
-    ).filter(Complaint.id == complaint_id)
-    q = apply_role_filter(q, current_user)
-    complaint = q.first()
+    ).filter(Complaint.id == complaint_id).first()
     if not complaint:
         raise HTTPException(404, "Complaint not found")
     return to_response(complaint)
@@ -239,7 +250,6 @@ def update_complaint(
     if not complaint:
         raise HTTPException(404, "Complaint not found")
 
-    # Officers can only edit their own bureau's cases
     if current_user.role not in (UserRole.admin,) and complaint.assigned_bureau != current_user.bureau.value:
         raise HTTPException(403, "Cannot edit cases from another bureau")
 
@@ -249,21 +259,20 @@ def update_complaint(
     for key, value in update_data.items():
         setattr(complaint, key, value)
 
-    # Log status change if applicable
     if "status" in update_data and update_data["status"] != old_status:
+        new_status_val = update_data["status"]
+        new_status_str = new_status_val.value if hasattr(new_status_val, "value") else str(new_status_val)
         action = ComplaintAction(
             id=uuid.uuid4(),
             complaint_id=complaint.id,
             action_type=ActionType.status_change,
             performed_by=current_user.id,
             old_status=old_status.value,
-            new_status=update_data["status"].value if hasattr(update_data["status"], "value") else update_data["status"],
+            new_status=new_status_str,
             remarks=f"Status updated by {current_user.full_name}",
         )
         db.add(action)
-        # Set actual disposal date if disposed/closed
-        new_s = update_data["status"]
-        if str(new_s) in ("disposed", "closed") and not complaint.actual_disposal_date:
+        if new_status_str in ("disposed", "closed") and not complaint.actual_disposal_date:
             complaint.actual_disposal_date = date.today()
 
     db.commit()
@@ -327,7 +336,7 @@ def transfer_complaint(
     if not complaint:
         raise HTTPException(404, "Complaint not found")
 
-    old_bureau = complaint.assigned_bureau
+    old_status = complaint.status  # capture BEFORE modifying
     complaint.assigned_bureau = data.to_bureau
     complaint.status = ComplaintStatus.transferred
     if data.to_officer_id:
@@ -338,7 +347,7 @@ def transfer_complaint(
         complaint_id=complaint.id,
         action_type=ActionType.transfer,
         performed_by=current_user.id,
-        old_status=ComplaintStatus.under_process.value,
+        old_status=old_status.value,
         new_status=ComplaintStatus.transferred.value,
         remarks=data.remarks,
         transferred_to_bureau=data.to_bureau,
@@ -392,9 +401,8 @@ def get_actions(
         .order_by(ComplaintAction.performed_at)
         .all()
     )
-    result = []
-    for a in actions:
-        result.append({
+    return [
+        {
             "id": str(a.id),
             "action_type": a.action_type.value,
             "performed_by": a.performed_by_user.full_name if a.performed_by_user else "System",
@@ -403,5 +411,6 @@ def get_actions(
             "new_status": a.new_status,
             "remarks": a.remarks,
             "transferred_to_bureau": a.transferred_to_bureau,
-        })
-    return result
+        }
+        for a in actions
+    ]

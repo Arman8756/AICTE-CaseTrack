@@ -48,7 +48,7 @@ export default function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {(data?.items ?? []).map((log: Record<string, string>) => (
+                {(data?.items ?? []).map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="table-td text-xs text-gray-500">{formatDateTime(log.performed_at)}</td>
                     <td className="table-td">

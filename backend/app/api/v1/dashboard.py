@@ -126,16 +126,21 @@ def chart_trend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    from sqlalchemy import cast, String
-    # Last 12 months
+    # Last 12 months — correct month arithmetic
     results = []
     today = date.today()
     for i in range(11, -1, -1):
-        first = (today.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
-        if first.month == 12:
-            last = first.replace(year=first.year + 1, month=1, day=1) - timedelta(days=1)
+        year = today.year
+        month = today.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        first = date(year, month, 1)
+        # last day of month
+        if month == 12:
+            last = date(year + 1, 1, 1) - timedelta(days=1)
         else:
-            last = first.replace(month=first.month + 1, day=1) - timedelta(days=1)
+            last = date(year, month + 1, 1) - timedelta(days=1)
 
         base = db.query(Complaint)
         base = apply_scope(base, current_user, db)
