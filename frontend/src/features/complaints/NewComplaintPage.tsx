@@ -8,7 +8,6 @@ import { useAuth } from "../auth/AuthContext";
 import toast from "react-hot-toast";
 import { ArrowLeft, Search, AlertTriangle } from "lucide-react";
 import { StatusBadge } from "../../components/StatusBadge";
-import { formatDate } from "../../utils";
 
 const CATEGORIES = [
   "Admission Irregularities", "Fee Regulation Violation", "Faculty Shortage",
@@ -26,7 +25,18 @@ export default function NewComplaintPage() {
 
   const [institutionSearch, setInstitutionSearch] = useState("");
   const [selectedInstitution, setSelectedInstitution] = useState<{ id: string; name: string; aicte_permanent_id: string | null } | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    received_date: string;
+    received_channel: string;
+    category: string;
+    sub_category: string;
+    description: string;
+    complainant_type: string;
+    priority: string;
+    assigned_bureau: string;
+    expected_disposal_date: string;
+    next_action_required: string;
+  }>({
     received_date: new Date().toISOString().split("T")[0],
     received_channel: "email",
     category: "",

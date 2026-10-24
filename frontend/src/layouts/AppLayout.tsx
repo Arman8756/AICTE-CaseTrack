@@ -1,13 +1,17 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Building2, LayoutDashboard, FileText, Landmark, AlertTriangle,
-  BarChart3, Users, LogOut, Menu, X, ChevronDown, Bell, Shield,
+  BarChart3, Users, LogOut, Menu, X, Shield,
 } from "lucide-react";
 import { useAuth } from "../features/auth/AuthContext";
 import { getRoleLabel } from "../utils";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardSummary } from "../api/dashboard";
+import {
+  getNotifications, getUnreadCount,
+} from "../api/notifications";
+import { NotificationBell, NotificationPanel } from "../components/NotificationPanel";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -26,6 +30,8 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [, forceUpdate] = useState(0); // trigger re-render after mark-read
 
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary"],
@@ -38,8 +44,14 @@ export default function AppLayout() {
     navigate("/login");
   };
 
+  const handleNotifUpdate = useCallback(() => {
+    forceUpdate((n) => n + 1);
+  }, []);
+
   const isAdmin = user?.role === "admin";
   const isMgmt = user?.role === "senior_management" || isAdmin;
+  const notifications = getNotifications();
+  const unreadCount = getUnreadCount();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -89,7 +101,7 @@ export default function AppLayout() {
                   </span>
                 )}
                 {to === "/complaints" && (summary?.overdue ?? 0) > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 text-xs">
+                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
                     {summary!.overdue} overdue
                   </span>
                 )}
@@ -103,7 +115,7 @@ export default function AppLayout() {
                 Administration
               </div>
               <div className="space-y-0.5">
-                {adminItems.map(({ to, icon: Icon, label }) => (
+                {adminItems.map(({ to, icon: Icon, label }) =>
                   isAdmin || to === "/admin/audit" ? (
                     <NavLink
                       key={to}
@@ -121,7 +133,7 @@ export default function AppLayout() {
                       {label}
                     </NavLink>
                   ) : null
-                ))}
+                )}
               </div>
             </>
           )}
@@ -149,7 +161,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -160,7 +172,8 @@ export default function AppLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center gap-4 px-4 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+        <header className="flex items-center gap-3 px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
+          {/* Mobile hamburger */}
           <button
             className="lg:hidden p-1.5 rounded text-gray-500 hover:bg-gray-100"
             onClick={() => setSidebarOpen(true)}
@@ -168,19 +181,57 @@ export default function AppLayout() {
           >
             <Menu className="w-5 h-5" />
           </button>
+
           <div className="flex-1" />
+
+          {/* Right-side controls */}
           <div className="flex items-center gap-2">
+            {/* Overdue pill */}
             {(summary?.overdue ?? 0) > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-1">
-                <Bell className="w-3 h-3" />
+              <NavLink
+                to="/complaints?overdue_only=true"
+                className="hidden sm:flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-1 hover:bg-red-100 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 {summary!.overdue} overdue
-              </span>
+              </NavLink>
             )}
-            <span className="hidden sm:block text-sm text-gray-500">
-              Bureau: <strong className="text-gray-700">{user?.bureau}</strong>
+
+            {/* Overlap pill */}
+            {(summary?.overlapping ?? 0) > 0 && (
+              <NavLink
+                to="/overlaps"
+                className="hidden md:flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 hover:bg-amber-100 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                {summary!.overlapping} overlaps
+              </NavLink>
+            )}
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+
+            {/* Bureau badge */}
+            <span className="hidden sm:block text-xs text-gray-500 bg-gray-100 rounded px-2 py-1">
+              {user?.bureau}
             </span>
+
+            {/* 🔔 Notification Bell */}
+            <NotificationBell
+              unreadCount={unreadCount}
+              onClick={() => setNotifOpen((o) => !o)}
+            />
           </div>
         </header>
+
+        {/* Notification Panel (portal-like, positioned from header) */}
+        <NotificationPanel
+          notifications={notifications}
+          unreadCount={unreadCount}
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
+          onUpdate={handleNotifUpdate}
+        />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

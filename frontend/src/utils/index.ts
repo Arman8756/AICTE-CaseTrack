@@ -1,4 +1,4 @@
-import { format, parseISO, differenceInDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { ComplaintStatus, ComplaintPriority, UserRole } from "../types";
 
 export function formatDate(dateStr: string | null | undefined): string {

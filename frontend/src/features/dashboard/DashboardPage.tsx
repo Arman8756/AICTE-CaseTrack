@@ -12,7 +12,7 @@ import { OverlapAlertBanner } from "../../components/OverlapAlert";
 import { Link } from "react-router-dom";
 import {
   FileText, Clock, CheckCircle, AlertTriangle, ArrowUpRight,
-  RefreshCw, TrendingUp, Users,
+  RefreshCw,
 } from "lucide-react";
 import { getActionTypeLabel, formatDateTime } from "../../utils";
 
