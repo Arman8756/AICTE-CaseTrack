@@ -1,10 +1,6 @@
 import { AlertTriangle, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 export function OverlapAlertBanner({ count }: { count: number }) {
   if (count === 0) return null;
   return (

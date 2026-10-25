@@ -8,6 +8,7 @@ import {
 import { StatusBadge } from "../../components/StatusBadge";
 import { PageLoader } from "../../components/LoadingSpinner";
 import { OverlapAlertBanner } from "../../components/OverlapAlert";
+import DocumentUpload from "../../components/DocumentUpload";
 import {
   formatDate, formatDateTime, getActionTypeLabel,
   getPriorityColor, getBureauColor, isReadOnlyRole,
@@ -227,6 +228,13 @@ export default function ComplaintDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Documents */}
+          <DocumentUpload
+            complaintId={complaint.id}
+            readOnly={readOnly}
+            uploaderName={user?.full_name ?? "Current User"}
+          />
         </div>
 
         {/* Right column — timeline */}

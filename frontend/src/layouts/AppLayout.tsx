@@ -1,16 +1,8 @@
-<<<<<<< HEAD
 import { useState, useCallback } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Building2, LayoutDashboard, FileText, Landmark, AlertTriangle,
   BarChart3, Users, LogOut, Menu, X, Shield,
-=======
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import {
-  Building2, LayoutDashboard, FileText, Landmark, AlertTriangle,
-  BarChart3, Users, LogOut, Menu, X, Bell, Shield,
->>>>>>> main
 } from "lucide-react";
 import { useAuth } from "../features/auth/AuthContext";
 import { getRoleLabel } from "../utils";
